@@ -1,6 +1,7 @@
 import './App.css';
 import {useState, useEffect} from "react";
-
+import { WtList } from './Wtlist';
+import {AttachmentDetail} from "./AttachmentDetail";
 
  function yhInit() {
     const socket = new WebSocket("ws://localhost:14812");
@@ -13,9 +14,9 @@ import {useState, useEffect} from "react";
         console.log(event.data);
         socket.close();
     }
-    socket.onclose(()=>{
+    socket.onclose = ()=>{
         console.log("init socket closed");
-    });
+    };
 }
 
 
@@ -133,8 +134,9 @@ function App()
     const params = new URLSearchParams(window.location.search);
     const [id, setId] = useState(params.get("id") || "");
     const [name, setName] = useState(params.get("name") || "");
-    const [result, setResult] = useState([]);
-    const relaTypeMap  = { "1": "父母", "2": "夫妻", "3": "子女", "4": "其他"};
+    const [wtList, setWtList] = useState([]);
+    const [attachmentList, setAttachmentList] = useState([]);
+    const [showAttachment, setShowAttachment] = useState(false);
     
     useEffect(()=>{ yhInit(); }, []);
     
@@ -159,9 +161,6 @@ function App()
                     ]
                     
                     const socket = new WebSocket("ws://localhost:14812");
-
-                    
-
                     
                     socket.onopen = () => {
                         var message = messages.pop();
@@ -181,7 +180,7 @@ function App()
                             const countString = xmlDoc.querySelector("recordcount").textContent || "0";
                             console.log(countString)
                             if (parseInt(countString.toString()) > 0) {
-                                setResult([...xmlDoc.querySelectorAll("row")]);
+                                setWtList([...xmlDoc.querySelectorAll("row")]);
                             }
                             // console.log(data.jyscxml);
                         }
@@ -201,60 +200,9 @@ function App()
             }>查询</button>
             <br />
             <br />
-            <table>
-                <thead>
-                    <tr>
-                        <th>委托流水号</th>
-                        <th>委托人身份证</th>
-                        <th>委托人证件类型</th>
-                        <th>委托人人员编号</th>
-                        <th>委托人姓名</th>
-                        <th>委托人电话号</th>
-                        <th>被委托人身份证</th>
-                        <th>被委托人证件类型</th>
-                        <th>被委托人人员编号</th>
-                        <th>被委托人姓名</th>
-                        <th>与委托人关系</th>
-                        <th>开始日期</th>
-                        <th>结束日期</th>
-                        <th>有效标志</th>
-                        <th>备注</th>
-                        <th>经办人id</th>
-                        <th>经办人姓名</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {
-                        !result || !result.length ?
-                            <tr><td>无数据</td></tr>
-                            :
+            <WtList wtList={wtList} showAttachment={show_attachment} />
+            <AttachmentDetail attachmentList={attachmentList} show={showAttachment} closeDetail={()=>{setShowAttachment(false)}} />
 
-                            result.map((item) => (
-                                <tr key={item.id}>
-                                    <td>{item.querySelector("id")?.textContent?.toString()}</td>
-                                    <td>{item.querySelector("entrustCertno")?.textContent}</td>
-                                    <td>{item.querySelector("entrustCertType")?.textContent}</td>
-                                    <td>{item.querySelector("entrustPsnno")?.textContent}</td>
-                                    <td>{item.querySelector("entrustName")?.textContent}</td>
-                                    <td>{item.querySelector("tel")?.textContent}</td>
-                                    <td>{item.querySelector("entrustedCertno")?.textContent}</td>
-                                    <td>{item.querySelector("entrustedCertType")?.textContent}</td>
-                                    <td>{item.querySelector("entrustedPsnno")?.textContent}</td>
-                                    <td>{item.querySelector("entrustedName")?.textContent}</td>
-                                    <td>{relaTypeMap[item.querySelector("bindRlts")?.textContent]}</td>
-                                    <td>{item.querySelector("begnDate")?.textContent}</td>
-                                    <td>{item.querySelector("endDate")?.textContent}</td>
-                                    <td>{item.querySelector("valiFlag")?.textContent}</td>
-                                    <td>{item.querySelector("memo")?.textContent}</td>
-                                    <td>{item.querySelector("opterId")?.textContent}</td>
-                                    <td>{item.querySelector("opterName")?.textContent}</td>
-                                    <td><button onClick={() => { show_attachment(item.querySelector("id")?.textContent); }}>查看附件</button></td>
-                                </tr>
-                            ))
-                    }
-                </tbody>
-            </table>
         </div>
     );
 }
