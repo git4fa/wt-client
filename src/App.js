@@ -2,6 +2,7 @@ import './App.css';
 import {useState, useEffect} from "react";
 import { WtList } from './Wtlist';
 import {AttachmentDetail} from "./AttachmentDetail";
+// import {WebSocket} from 'websocket';
 
  function yhInit() {
     const socket = new WebSocket("ws://localhost:14812");
@@ -19,115 +20,61 @@ import {AttachmentDetail} from "./AttachmentDetail";
     };
 }
 
-
-function show_attachment(sno) {
-
-    const messages = [
-        `{
-                "funcationName":"YHDLLCALL",
-                "strJybh":"WT05",
-                "Dataxml":"<input><entrustId>${sno}</entrustId></input>"
-              }`,
-    ];
-
+function yhCall(jybm, dataxml, handle)
+{
+    const message = {funcationName: "YHDLLCALL", strJybh: jybm, Dataxml: dataxml};
     const socket = new WebSocket("ws://localhost:14812");
+
     socket.onopen = () => {
-        var message = messages.pop();
-        // var message : any = messages[0];
-        socket.send(message);
+        socket.send(JSON.stringify(message));
     };
 
     socket.onmessage = (event) => {
-        var dataString = event.data;
+        let dataString = event.data;
         dataString = dataString.replace('<?xml version="1.0" encoding="GBK" standalone="yes" ?>', '');
-        var data = JSON.parse(dataString);
+        const data = JSON.parse(dataString);
 
-        if (data["code"] === 1 || data["aint_appcode"] === 1) {
-            const attachTypeMap = {"1": "委托人身份证复印件", "2": "被委托人身份证复印件", "3": "贵州省委托购药申请表", "4": "其他"}
-            const parser = new DOMParser();
-            const jyscxml = data["jyscxml"] || data["astr_jysc_xml"];
-            const xmlDoc = parser.parseFromString(jyscxml, 'text/xml');
-            const countString = xmlDoc.querySelector("recordcount")?.textContent || "0";
-            if (parseInt(countString.toString()) > 0) {
-                const attachments = [...xmlDoc.querySelectorAll("row")];
-                const c = attachments.map((e)=>{
-                    const base64String = e.querySelector("base64Str")?.textContent?.toString();
-                    const typeId = e.querySelector("type")?.textContent;
-                    return `
-                        <div>
-                            <img style="width: 80%" src="data:image/jpeg;base64,${base64String}" />
-                            <p>${attachTypeMap[typeId]}</p>
-                        </div>
-                    `;
-                });
-
-                var divContainer = document.createElement("div");
-                // divContainer.style["z-index"] = "99999";
-                // divContainer.style["width"] = 600;
-                // divContainer.style["height"] = 400;
-                // divContainer.style["background-color"] = "#27282c";
-                divContainer.style["color"] = "black";
-                divContainer.style["backgroundColor"] = "#EEEEEE";
-                divContainer.style["position"] = "fixed";
-                divContainer.style["left"] = "25%";
-                divContainer.style["width"] = "50%";
-                divContainer.style["height"] = "80%";
-                divContainer.style["border"] = "5px solid blue";
-                divContainer.style["top"] = "10%";
-
-                const divHeader = document.createElement("div");
-                divHeader.style.backgroundColor = "blue";
-                const popupId = "attachment";
-                var closeButton = document.createElement("button");
-                closeButton.innerHTML = "[X]";
-                // closeButton.style["background-color"] = "#27282c";
-                closeButton.style["color"] = "black";
-                closeButton.id = `${popupId}_btnclose`;
-                divHeader.appendChild(closeButton);
-                divContainer.appendChild(divHeader);
-
-                divContainer.appendChild(document.createElement("br"));
-
-                const bodyContainer = document.createElement("div");
-                bodyContainer.style.paddingLeft = "5px";
-                bodyContainer.style.overflow = "auto";
-                bodyContainer.style.width = "100%";
-                bodyContainer.style.height = "90%";
-                bodyContainer.innerHTML = c.join("<br />");
-
-                divContainer.appendChild(bodyContainer);
-
-                divContainer.id = popupId;
-                document.querySelectorAll("#"+popupId).forEach(p=>{
-                    p.parentElement?.removeChild(p);
-                });
-                document.body.appendChild(divContainer);
-                document.querySelectorAll(`#${popupId}_btnclose`).forEach(btn=>{
-                    btn.addEventListener("click", ()=>{
-                        console.log("clicked");
-                        document.querySelectorAll("#"+popupId).forEach(p=>{
-                            p.parentElement?.removeChild(p);
-                        });
-                    });
-
-                });
-            }
-        };
-        
-        if (messages.length > 0) {
-            var message = messages.pop();
-            socket.send(message);
-        }
-        else
+        let appcode = 0;
+        let appmsg = "";
+        let jysc = "<output></output>"
+        for (const key in data)
         {
-            socket.close();
+            if (key === "code" || key === "aint_appcode")
+                appcode = data[key];
+            else if (key === "appmsg" || key === "astr_appmsg")
+                appmsg = data[key];
+            else if (key === "jyscxml" || key === "astr_jysc_xml")
+                jysc = data[key];
+        }
+
+        if (appcode === 1) {
+            handle(jysc);
+        } else if (appcode === -1 && appmsg.indexOf("初始化")>=0) {
+            yhInit();
+        } else {
+            console.log(appcode, appmsg);
         }
     }
-    socket.onclose = () => {
-        console.log("连接关闭");
-    };
+
+    socket.onclose = ()=> {
+        console.log("closed");
+    }
+    
 }
 
+function show_attachment(sno, setData) {
+    const inputXml = `<input><entrustId>${sno}</entrustId></input>`;
+    
+    yhCall("WT05", inputXml, (data)=>{
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(data, 'text/xml');
+        const countString = xmlDoc.querySelector("recordcount")?.textContent || "0";
+        if (parseInt(countString.toString()) > 0) {
+            const attachments = [...xmlDoc.querySelectorAll("row")];
+            setData(attachments);
+        }
+    });
+}
 
 function App()
 {
@@ -140,6 +87,22 @@ function App()
     
     useEffect(()=>{ yhInit(); }, []);
     
+    function onSearch() {
+        const inputXml = `<input><entrustCertno>${id}</entrustCertno><entrustCertType>01</entrustCertType><entrustName>${name}</entrustName></input>`;
+        yhCall("WT04", inputXml, (data)=>{
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(data, 'text/xml');
+            const countString = xmlDoc.querySelector("recordcount").textContent || "0";
+            if (parseInt(countString.toString()) > 0) {
+                setWtList([...xmlDoc.querySelectorAll("row")]);
+            }
+        });
+    }
+
+    function onShowAttachment(sno) {
+        show_attachment(sno, setAttachmentList);
+        setShowAttachment(true);
+    }
     
     return (
         <div>
@@ -147,60 +110,10 @@ function App()
             <input value={id} onChange={(e) => setId(e.target.value)} type="text" placeholder="身份证号" name="id"></input>
             <label htmlFor="">姓名: </label>
             <input value={name} onChange={(e) => setName(e.target.value)} type="text" placeholder="姓名" name="name"></input>
-            <button onClick={
-                () => {
-
-
-                    const messages = [
-                        `{
-                            "funcationName":"YHDLLCALL",
-                            "strJybh":"WT04",
-                            "Dataxml":"<input><entrustCertno>${id}</entrustCertno><entrustCertType>01</entrustCertType><entrustName>${name}</entrustName></input>"
-                        }`,
-                        // '{"funcationName":"YHDLLINIT"}',
-                    ]
-                    
-                    const socket = new WebSocket("ws://localhost:14812");
-                    
-                    socket.onopen = () => {
-                        var message = messages.pop();
-                        // var message : any = messages[0];
-                        socket.send(message);
-                    };
-                    socket.onmessage = (event) => {
-                        var dataString = event.data;
-                        dataString = dataString.replace('<?xml version="1.0" encoding="GBK" standalone="yes" ?>', '');
-                        var data = JSON.parse(dataString);
-
-                        console.log(data);
-                        if (data["code"] === 1 || data["aint_appcode"] === 1) {
-                            const parser = new DOMParser();
-                            const jyscxml = data["jyscxml"] || data["astr_jysc_xml"];
-                            const xmlDoc = parser.parseFromString(jyscxml, 'text/xml');
-                            const countString = xmlDoc.querySelector("recordcount").textContent || "0";
-                            console.log(countString)
-                            if (parseInt(countString.toString()) > 0) {
-                                setWtList([...xmlDoc.querySelectorAll("row")]);
-                            }
-                            // console.log(data.jyscxml);
-                        }
-
-                        if (messages.length > 0) {
-                            var message = messages.pop();
-                            socket.send(message);
-                        }
-                        else {
-                            socket.close();
-                        }
-                    };
-                    socket.onclose = () => {
-                        console.log("连接关闭");
-                    };
-                }
-            }>查询</button>
+            <button onClick={onSearch}>查询</button>
             <br />
             <br />
-            <WtList wtList={wtList} showAttachment={show_attachment} />
+            <WtList wtList={wtList} showAttachment={onShowAttachment} />
             <AttachmentDetail attachmentList={attachmentList} show={showAttachment} closeDetail={()=>{setShowAttachment(false)}} />
 
         </div>

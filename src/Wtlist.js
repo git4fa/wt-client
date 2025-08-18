@@ -1,10 +1,8 @@
-
+import "./WtList.css"
 
 
 export function WtList({wtList, showAttachment}) {
     const relaTypeMap  = { "1": "父母", "2": "夫妻", "3": "子女", "4": "其他"};
-    console.log("length: ");
-    console.log(wtList.length);
     return (
         <>
              <table>
@@ -27,12 +25,12 @@ export function WtList({wtList, showAttachment}) {
                         <th>备注</th>
                         <th>经办人id</th>
                         <th>经办人姓名</th>
-                        <th>操作</th>
+                        <th className={"fixed-column"}>操作</th>
                     </tr>
                 </thead>
                 <tbody>
                     {
-                        wtList && wtList.length &&
+                        wtList.length > 0 &&
                             wtList.map((item) => (
                                 <tr key={item.id}>
                                     <td>{item.querySelector("id")?.textContent?.toString()}</td>
@@ -52,13 +50,13 @@ export function WtList({wtList, showAttachment}) {
                                     <td>{item.querySelector("memo")?.textContent}</td>
                                     <td>{item.querySelector("opterId")?.textContent}</td>
                                     <td>{item.querySelector("opterName")?.textContent}</td>
-                                    <td><button onClick={() => { showAttachment(item.querySelector("id")?.textContent); }}>查看附件</button></td>
+                                    <td className={"fixed-column"}><a href={"#a"} onClick={(e) => { e.preventDefault(); showAttachment(item.querySelector("id")?.textContent); }}>查看附件</a></td>
                                 </tr>
                             ))
                     }
                 </tbody>
             </table>
-            <div>{!(wtList && wtList.length) && <div>无数据</div>}</div>
+            <div>{!(wtList && wtList.length > 0) && <div>无数据</div>}</div>
         </>
     )
 }
