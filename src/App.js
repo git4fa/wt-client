@@ -84,6 +84,7 @@ function App()
     const [wtList, setWtList] = useState([]);
     const [attachmentList, setAttachmentList] = useState([]);
     const [showAttachment, setShowAttachment] = useState(false);
+    const [searchStatus, setSearchStatus] = useState("");
     
     useEffect(()=>{ yhInit(); }, []);
     
@@ -115,7 +116,13 @@ function App()
             <br />
             <WtList wtList={wtList} showAttachment={onShowAttachment} />
             <AttachmentDetail attachmentList={attachmentList} show={showAttachment} closeDetail={()=>{setShowAttachment(false)}} />
-
+            <br />
+            <br />
+            <br />
+            <br />
+            <div style={{width: "100%", display: "flex", alignItems: "center", justifyContent: "center"}}>
+                <a href="http://192.168.10.54/pc-manager/#/pre-consultation-detail" rel="noreferrer" target="_blank" >预问诊</a>
+            </div>
         </div>
     );
 }
