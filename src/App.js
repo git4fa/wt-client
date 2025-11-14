@@ -99,6 +99,7 @@ function App()
             }
         });
     }
+    useEffect(()=>{ onSearch(); }, []);
 
     function onShowAttachment(sno) {
         show_attachment(sno, setAttachmentList);
